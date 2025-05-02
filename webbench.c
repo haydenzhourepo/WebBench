@@ -19,7 +19,7 @@
 #include "socket.c"
 #include <unistd.h>
 #include <sys/param.h>
-#include <rpc/types.h>
+// #include <rpc/types.h> #include <rpc/types.h>
 #include <getopt.h>
 #include <strings.h>
 #include <time.h>
@@ -41,6 +41,7 @@ int http10=1; /* 0 - http/0.9, 1 - http/1.0, 2 - http/1.1 */
 #define PROGRAM_VERSION "1.5"
 int method=METHOD_GET;
 int clients=1;
+int ipv6=0;  // 0 disable, 1 enable
 int force=0;
 int force_reload=0;
 int proxyport=80;
@@ -69,6 +70,7 @@ static const struct option long_options[]=
     {"version",no_argument,NULL,'V'},
     {"proxy",required_argument,NULL,'p'},
     {"clients",required_argument,NULL,'c'},
+    {"ipv6", no_argument, &ipv6, 1},
     {NULL,0,NULL,0}
 };
 
@@ -98,6 +100,7 @@ static void usage(void)
             "  --head                   Use HEAD request method.\n"
             "  --options                Use OPTIONS request method.\n"
             "  --trace                  Use TRACE request method.\n"
+            "  --ipv6                   Use IPV6."
             "  -?|-h|--help             This information.\n"
             "  -V|--version             Display program version.\n"
            );
@@ -204,8 +207,13 @@ int main(int argc, char *argv[])
     else
         printf("%d clients",clients);
 
+    if (ipv6 == 1)
+        printf(" IPV6");
+    else
+        printf(" IPV4");
+
     printf(", running %d sec", benchtime);
-    
+
     if(force) printf(", early socket close");
     if(proxyhost!=NULL) printf(", via proxy server %s:%d",proxyhost,proxyport);
     if(force_reload) printf(", forcing reload");
@@ -329,7 +337,7 @@ static int bench(void)
     FILE *f;
 
     /* check avaibility of target server */
-    i=Socket(proxyhost==NULL?host:proxyhost,proxyport);
+    i=Socket(ipv6, proxyhost==NULL?host:proxyhost,proxyport);
     if(i<0) { 
         fprintf(stderr,"\nConnect to server failed. Aborting benchmark.\n");
         return 1;
@@ -463,7 +471,7 @@ void benchcore(const char *host,const int port,const char *req)
             return;
         }
         
-        s=Socket(host,port);                          
+        s=Socket(ipv6, host,port);
         if(s<0) { failed++;continue;} 
         if(rlen!=write(s,req,rlen)) {failed++;close(s);continue;}
         if(http10==0) 
